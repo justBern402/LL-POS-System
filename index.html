@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional POS System</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #receipt,
+            #receipt * {
+                visibility: visible;
+            }
+
+            #receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 p-2 sm:p-6">
+
+    <div class="max-w-md mx-auto bg-white p-4 rounded-xl shadow-lg">
+
+        <h1 class="text-xl font-bold text-center mb-3">L&L Store POS SYSTEM</h1>
+
+        <!-- CUSTOMER -->
+        <input id="customer" type="text" placeholder="Customer Name" class="border p-2 rounded w-full mb-2">
+
+        <!-- INPUTS -->
+        <div class="flex flex-col gap-2 mb-3">
+
+            <input id="item" type="text" placeholder="Item" class="border p-2 rounded">
+
+            <div class="flex gap-2">
+                <input id="price" type="number" placeholder="Price" class="border p-2 w-full rounded">
+
+                <input id="qty" type="number" placeholder="Qty" class="border p-2 w-20 rounded">
+            </div>
+
+            <button onclick="addItem()" class="bg-blue-500 text-white py-2 rounded font-bold">
+                ➕ Add Item
+            </button>
+        </div>
+
+        <!-- RECEIPT -->
+        <div id="receipt" class="bg-white border p-3 rounded text-xs font-mono">
+
+            <div class="text-center">
+                <h2 class="font-bold text-lg">L&L Store</h2>
+                <p>Receipt #: <span id="receiptNo"></span></p>
+                <p id="dateTime"></p>
+            </div>
+
+            <hr class="my-2">
+
+            <table class="w-full text-xs">
+                <thead>
+                    <tr>
+                        <th class="text-left">Item</th>
+                        <th>Qty</th>
+                        <th>₱</th>
+                        <th>Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="receiptBody"></tbody>
+            </table>
+
+            <hr class="my-2">
+
+            <div class="flex justify-between font-bold">
+                <span>TOTAL</span>
+                <span>₱<span id="grandTotal">0.00</span></span>
+            </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="grid grid-cols-2 gap-2 mt-3">
+            <button onclick="clearReceipt()" class="bg-red-500 text-white py-2 rounded">Clear</button>
+
+            <button onclick="printReceipt()" class="bg-green-500 text-white py-2 rounded">Print</button>
+        </div>
+
+        <button onclick="saveReceipt()" class="bg-yellow-500 text-white py-2 rounded w-full mt-2">
+            💾 Save Purchase
+        </button>
+
+        <!-- REPORTS -->
+        <!-- MONTH SELECT -->
+        <select id="monthSelect" onchange="updateReports()" class="border p-2 rounded w-full mb-2">
+        </select>
+
+        <!-- VIEW TYPE -->
+        <select id="viewSelect" onchange="updateReports()" class="border p-2 rounded w-full mb-2">
+            <option value="daily">📅 Specific Day</option>
+            <option value="weekly">📆 Weekly (1–5)</option>
+            <option value="monthly">🗓 Full Month</option>
+        </select>
+
+        <!-- DATE PICKER -->
+        <input type="date" id="dateSelect" onchange="updateReports()" class="border p-2 rounded w-full mb-2">
+
+        <!-- WEEK SELECT -->
+        <select id="weekSelect" onchange="updateReports()" class="border p-2 rounded w-full mb-2">
+            <option value="1">Week 1</option>
+            <option value="2">Week 2</option>
+            <option value="3">Week 3</option>
+            <option value="4">Week 4</option>
+            <option value="4">Week 5</option>
+        </select>
+
+        <div class="bg-gray-50 p-3 border rounded text-center">
+            <h2 class="font-bold">📊 Sales Total</h2>
+            <p class="text-xl font-bold">₱<span id="reportTotal">0.00</span></p>
+        </div>
+
+        <!-- RECENT SALES -->
+        <input type="date" id="recentDateFilter" onchange="updateRecentSales()" class="border p-2 rounded w-full mb-2">
+        <div class="mt-3 bg-white p-3 border rounded">
+            <h2 class="font-bold text-center mb-2">🧾 Recent Sales</h2>
+            <div id="recentSales" class="text-sm"></div>
+        </div>
+
+    </div>
+
+    <script>
+        /* =======================
+           STORAGE LOAD
+        ======================= */
+        let salesHistory = JSON.parse(localStorage.getItem("sales")) || [];
+        let receiptCounter = parseInt(localStorage.getItem("receiptNo")) || 1;
+
+        /* CURRENT ORDER */
+        let currentOrder = [];
+        let total = 0;
+
+        /* INIT */
+        document.getElementById("receiptNo").innerText = receiptCounter;
+        updateDateTime();
+        updateReports();
+        updateRecentSales();
+
+        /* =======================
+           TIME
+        ======================= */
+        function updateDateTime() {
+            document.getElementById("dateTime").innerText =
+                new Date().toLocaleString();
+        }
+
+        /* =======================
+           ADD ITEM
+        ======================= */
+        function addItem() {
+            let item = document.getElementById("item").value;
+            let price = parseFloat(document.getElementById("price").value);
+            let qty = parseInt(document.getElementById("qty").value);
+
+            if (!item || isNaN(price) || isNaN(qty)) {
+                alert("Fill all fields");
+                return;
+            }
+
+            let itemTotal = price * qty;
+
+            let data = { item, price, qty, total: itemTotal };
+
+            currentOrder.push(data);
+            total += itemTotal;
+
+            let row = document.createElement("tr");
+            row.classList.add("text-center", "border-t");
+
+            row.innerHTML = `
+    <td class="text-left">${item}</td>
+    <td>${qty}</td>
+    <td>${price.toFixed(2)}</td>
+    <td>${itemTotal.toFixed(2)}</td>
+    <td><button onclick="deleteItem(this, ${itemTotal})" class="text-red-500">❌</button></td>
+  `;
+
+            document.getElementById("receiptBody").appendChild(row);
+            updateTotal();
+
+            document.getElementById("item").value = "";
+            document.getElementById("price").value = "";
+            document.getElementById("qty").value = "";
+        }
+
+        /* =======================
+           DELETE ITEM
+        ======================= */
+        function deleteItem(btn, amount) {
+            btn.parentElement.parentElement.remove();
+            total -= amount;
+
+            // FIX: remove correct item
+            currentOrder = currentOrder.filter(i => i.total !== amount);
+
+            updateTotal();
+        }
+
+        /* =======================
+           TOTAL
+        ======================= */
+        function updateTotal() {
+            document.getElementById("grandTotal").innerText = total.toFixed(2);
+        }
+
+        /* =======================
+           SAVE RECEIPT (PRO FEATURE)
+        ======================= */
+        function saveReceipt() {
+            if (currentOrder.length === 0) {
+                alert("No items");
+                return;
+            }
+
+            let customer = document.getElementById("customer").value || "Walk-in";
+
+            let sale = {
+                receiptNo: receiptCounter,
+                customer,
+                items: currentOrder,
+                total,
+                date: new Date()
+            };
+
+            salesHistory.push(sale);
+
+            localStorage.setItem("sales", JSON.stringify(salesHistory));
+
+            receiptCounter++;
+            localStorage.setItem("receiptNo", receiptCounter);
+
+            resetCurrent();
+            updateReports();
+            updateRecentSales();
+
+            alert("Receipt Saved!");
+        }
+
+        /* =======================
+           RESET ORDER
+        ======================= */
+        function resetCurrent() {
+            currentOrder = [];
+            total = 0;
+            document.getElementById("receiptBody").innerHTML = "";
+            document.getElementById("grandTotal").innerText = "0.00";
+            document.getElementById("customer").value = "";
+            document.getElementById("receiptNo").innerText = receiptCounter;
+        }
+
+        /* =======================
+           REPORTS
+        ======================= */
+        function updateReports() {
+            let selectedMonth = parseInt(document.getElementById("monthSelect").value);
+            let viewType = document.getElementById("viewSelect").value;
+            let selectedDate = document.getElementById("dateSelect").value;
+            let selectedWeek = parseInt(document.getElementById("weekSelect").value);
+
+            let year = new Date().getFullYear();
+
+            let total = 0;
+
+            salesHistory.forEach(s => {
+                let d = new Date(s.date);
+
+                // FILTER BY MONTH FIRST
+                if (d.getMonth() !== selectedMonth) return;
+
+                // =========================
+                // DAILY (SPECIFIC DATE)
+                // =========================
+                if (viewType === "daily" && selectedDate) {
+                    let selected = new Date(selectedDate);
+
+                    if (
+                        d.getFullYear() === selected.getFullYear() &&
+                        d.getMonth() === selected.getMonth() &&
+                        d.getDate() === selected.getDate()
+                    ) {
+                        total += s.total;
+                    }
+                }
+
+                // =========================
+                // WEEKLY (1–5)
+                // =========================
+                if (viewType === "weekly") {
+                    let week = Math.ceil(d.getDate() / 7);
+
+                    if (week === selectedWeek) {
+                        total += s.total;
+                    }
+                }
+
+                // =========================
+                // MONTHLY
+                // =========================
+                if (viewType === "monthly") {
+                    total += s.total;
+                }
+            });
+
+            document.getElementById("reportTotal").innerText = total.toFixed(2);
+        }
+
+        /* =======================
+           RECENT SALES
+        ======================= */
+        function updateRecentSales() {
+            let box = document.getElementById("recentSales");
+            let selectedDate = document.getElementById("recentDateFilter").value;
+
+            box.innerHTML = "";
+
+            let filtered = salesHistory;
+
+            // =========================
+            // FILTER BY DATE (if selected)
+            // =========================
+            if (selectedDate) {
+                let selected = new Date(selectedDate);
+
+                filtered = salesHistory.filter(s => {
+                    let d = new Date(s.date);
+
+                    return (
+                        d.getFullYear() === selected.getFullYear() &&
+                        d.getMonth() === selected.getMonth() &&
+                        d.getDate() === selected.getDate()
+                    );
+                });
+            }
+
+            let recent = filtered.slice(-10).reverse();
+
+            recent.forEach(s => {
+                let div = document.createElement("div");
+                div.className = "text-xs border-b py-2";
+
+                let itemsList = s.items.map(i =>
+                    `${i.item} x${i.qty}`
+                ).join(", ");
+
+                div.innerHTML = `
+        <div class="font-bold">
+            #${s.receiptNo} - ${s.customer}
+        </div>
+
+        <div class="text-gray-700">
+            ${itemsList}
+        </div>
+
+        <div class="flex justify-between mt-1 text-gray-500">
+            <span>₱${s.total.toFixed(2)}</span>
+            <span>${new Date(s.date).toLocaleString()}</span>
+        </div>
+        `;
+
+                box.appendChild(div);
+            });
+
+            // IF NO DATA
+            if (recent.length === 0) {
+                box.innerHTML = `<p class="text-center text-gray-400">No sales found</p>`;
+            }
+        }
+
+        /* =======================
+           CLEAR
+        ======================= */
+        function clearReceipt() {
+            resetCurrent();
+        }
+
+        /* =======================
+           PRINT
+        ======================= */
+        function printReceipt() {
+            window.print();
+        }
+
+        // LOAD MONTHS
+
+        function loadMonths() {
+            let monthSelect = document.getElementById("monthSelect");
+
+            let months = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+
+            months.forEach((m, i) => {
+                let option = document.createElement("option");
+                option.value = i;
+                option.textContent = m;
+                monthSelect.appendChild(option);
+            });
+
+            monthSelect.value = new Date().getMonth();
+        }
+
+        loadMonths();
+
+        document.getElementById("monthSelect").addEventListener("change", () => {
+            let month = document.getElementById("monthSelect").value;
+            let year = new Date().getFullYear();
+
+            let firstDay = `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-01`;
+
+            document.getElementById("dateSelect").value = firstDay;
+
+            updateReports();
+        });
+    </script>
+
+</body>
+
+</html>
