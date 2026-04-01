@@ -121,7 +121,7 @@
             <option value="2">Week 2</option>
             <option value="3">Week 3</option>
             <option value="4">Week 4</option>
-            <option value="4">Week 5</option>
+            <option value="5">Week 5</option>
         </select>
 
         <div class="bg-gray-50 p-3 border rounded text-center">
@@ -308,12 +308,21 @@
                 // WEEKLY (1–5)
                 // =========================
                 if (viewType === "weekly") {
-                    let week = Math.ceil(d.getDate() / 7);
 
-                    if (week === selectedWeek) {
-                        total += s.total;
-                    }
-                }
+    let firstDayOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+
+    // Get day index (0=Sun, 1=Mon...)
+    let offset = firstDayOfMonth.getDay();
+
+    // Adjust date position
+    let adjustedDate = d.getDate() + offset;
+
+    let week = Math.ceil(adjustedDate / 7);
+
+    if (week === selectedWeek) {
+        total += s.total;
+    }
+}
 
                 // =========================
                 // MONTHLY
