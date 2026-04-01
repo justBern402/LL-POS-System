@@ -46,7 +46,7 @@
             <div class="flex gap-2">
                 <input id="price" type="number" placeholder="Price" class="border p-2 w-full rounded">
 
-                <input id="qty" type="number" placeholder="Qty" class="border p-2 w-20 rounded">
+                <input id="qty" type="number" step="0.01" placeholder="Qty / Kg" class="border p-2 w-24 rounded">
             </div>
 
             <button onclick="addItem()" class="bg-blue-500 text-white py-2 rounded font-bold">
@@ -69,7 +69,7 @@
                 <thead>
                     <tr>
                         <th class="text-left">Item</th>
-                        <th>Qty</th>
+                        <th>Qty/klg</th>
                         <th>₱</th>
                         <th>Total</th>
                         <th></th>
@@ -172,7 +172,7 @@
         function addItem() {
             let item = document.getElementById("item").value;
             let price = parseFloat(document.getElementById("price").value);
-            let qty = parseInt(document.getElementById("qty").value);
+            let qty = parseFloat(document.getElementById("qty").value);
 
             if (!item || isNaN(price) || isNaN(qty)) {
                 alert("Fill all fields");
@@ -191,7 +191,7 @@
 
             row.innerHTML = `
     <td class="text-left">${item}</td>
-    <td>${qty}</td>
+    <td>${qty} Kg</td>
     <td>${price.toFixed(2)}</td>
     <td>${itemTotal.toFixed(2)}</td>
     <td><button onclick="deleteItem(this, ${itemTotal})" class="text-red-500">❌</button></td>
